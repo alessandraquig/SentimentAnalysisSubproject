@@ -60,6 +60,7 @@ def scraper_all(outdir, website='finviz'):
     if website == 'finviz':
         url = 'https://finviz.com/news.ashx'
 
+    req = Request(url=url, headers={'user-agent': 'my-app'})
     response = urlopen(req)
     html = BeautifulSoup(response, features='html.parser')
     news_table = html.find(id='news').select("table")[3].findAll('tr', {'class': 'nn'})
