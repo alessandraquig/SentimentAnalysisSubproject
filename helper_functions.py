@@ -16,3 +16,28 @@ def price_timestamp(df):
                                          + datetime.timedelta(hours=18))
 
     return df
+
+
+def load_news_df(ticker, date=['2020-01-01', '2021-03-05'], indir='parsed_data', website="finnhub"):
+    if isinstance(date, list):
+        file = open(f'{indir}/{ticker}_{date_from}_{date_to}_{website}.pkl', 'rb')
+    else:
+        file = open(f'{indir}/{ticker}_{date}_{website}.pkl', 'rb')
+    data = pickle.load(file)
+    file.close()
+    
+    if website == 'finviz':
+        df = pd.DataFrame(data, columns=['timestamp', 'ticker', 'title', 'source']).set_index('timestamp', drop=True)
+
+    return df
+
+
+def load_price_df(ticker, date, window=None, indir='parsed_data', website="alphavantage"):
+    if window != None:
+        file = open(f'{indir}/{ticker}_{date}_{window}_{interval}_{website}.pkl', 'rb')
+    else:
+        file = open(f'{indir}/{ticker}_{date}_{interval}_{website}.pkl', 'rb')
+    df = pickle.load(file)
+    file.close()
+    
+    return df

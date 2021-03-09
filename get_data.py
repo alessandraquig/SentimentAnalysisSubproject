@@ -4,6 +4,7 @@
 import argparse
 import datetime
 import requests
+import io
 import pandas as pd
 import constants # API keys
 
@@ -18,6 +19,7 @@ parser.add_argument('-t', "--ticker", dest='ticker', default='', help='Stock tic
 parser.add_argument('-w', "--website", dest='website', default='finnhub',
                     help='Website to scrape or get API from: finnhub (default), finviz, alphavantage')
 parser.add_argument('-o', "--outdir", dest='outdir', default='parsed_data/', help='Output file directory')
+parser.add_argument("-s", "--slice", dest='slice', default='', help='30 day window to get data for; year1month1 being most recent, see AlphaVantage docs')
 args = parser.parse_args()
 
 
@@ -95,6 +97,43 @@ def get_historical_news(ticker, date_from, date_to, outdir, website='finnhub'):
     pickle.dump(df, file)
     file.close()
 
+def intraday_extended_price_data(ticker, window, interval, website='alphavantage'):
+    data = {"function": "TIME_SERIES_INTRADAY_EXTENDED",
+            "symbol": ticker,
+            "interval": interval,
+            "slice": window,
+            "apikey": constants.ALPHAVANTAGE_KEY
+           } 
+    if website == 'alphavantage':
+        response = requests.get('https://www.alphavantage.co/query', data).content
+        
+    df = pd.read_csv(io.StringIO(response.decode('utf-8')))
+    df = df.set_index('time', drop=True)
+    
+    file = open(f'{outdir}/{ticker}_{str(datetime.date.today())}_{window}_{interval}_{website}.pkl', 'wb')
+    pickle.dump(df, file)
+    file.close()
+
+def intraday_price_data(ticker, interval, website='alphavantage'):
+    data = { "function": "TIME_SERIES_INTRADAY",  # Returns most recent 1-2 months data
+            "symbol": symbol,
+            "interval": 'interval,
+            "outputsize" : "full", # compact is default (latest 100 data points)
+            "apikey": constants.ALPHAVANTAGE_KEY
+           }
+    if website == 'alphavantage':
+        response = requests.get('https://www.alphavantage.co/query', data).json()
+        
+    df = pd.DataFrame.from_dict(response['Time Series (5min)'],
+                                   orient='index').sort_index(axis=1)
+    df = df.rename(columns={ '1. open': 'Open', '2. high': 'High', '3. low': 'Low',
+                            '4. close': 'Close', '5. volume': 'Volume'})
+    df.index = pd.to_datetime(df.index)
+    
+    file = open(f'{outdir}/{ticker}_{str(datetime.date.today())}_{interval}_{website}.pkl', 'wb')
+    pickle.dump(df, file)
+    file.close()
+    
 
 if __name__ == "__main__":
     # Check output directory format
@@ -107,6 +146,7 @@ if __name__ == "__main__":
     # Set dates to get historical data for
     date_from = '2020-01-01'
     date_to = '2021-03-05'
+    interval = '5m'
         
     # Web scrape or API
     if args.website == 'finviz':
@@ -119,5 +159,13 @@ if __name__ == "__main__":
             print ("Need to supply ticker in argument -t")
         else:
             get_historical_news(args.ticker, date_from, date_to, outdir)
+    
+    if args.website == 'alphavantage':
+        if args.slice != '':
+            intraday_extended_price_data(ticker, window=args.slice, interval, website='alphavantage')
+        else:
+            intraday_price_data(ticker, interval, website='alphavantage')
+            
+            
         
         
