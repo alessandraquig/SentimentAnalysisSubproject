@@ -87,7 +87,8 @@ def get_historical_news(ticker, date_from, date_to, outdir, website='finnhub'):
             "to": date_to,
             "token": constants.FINNHUB_KEY} 
     
-    response = requests.get('https://finnhub.io/api/v1/company-news', data)
+    if website == 'finnhub':
+        response = requests.get('https://finnhub.io/api/v1/company-news', data)
     
     df = pd.DataFrame.from_dict(response.json()).drop(['category', 'id', 'image', 'url'], axis=1)
     df['datetime'] = pd.to_datetime(df['datetime'],unit='s')
@@ -96,6 +97,7 @@ def get_historical_news(ticker, date_from, date_to, outdir, website='finnhub'):
     file = open(f'{outdir}/{ticker}_{date_from}_{date_to}_{website}.pkl', 'wb')
     pickle.dump(df, file)
     file.close()
+    
 
 def intraday_extended_price_data(ticker, window, interval, website='alphavantage'):
     data = {"function": "TIME_SERIES_INTRADAY_EXTENDED",
@@ -113,11 +115,12 @@ def intraday_extended_price_data(ticker, window, interval, website='alphavantage
     file = open(f'{outdir}/{ticker}_{str(datetime.date.today())}_{window}_{interval}_{website}.pkl', 'wb')
     pickle.dump(df, file)
     file.close()
+    
 
 def intraday_price_data(ticker, interval, website='alphavantage'):
     data = { "function": "TIME_SERIES_INTRADAY",  # Returns most recent 1-2 months data
-            "symbol": symbol,
-            "interval": 'interval,
+            "symbol": ticker,
+            "interval": interval,
             "outputsize" : "full", # compact is default (latest 100 data points)
             "apikey": constants.ALPHAVANTAGE_KEY
            }
@@ -146,7 +149,7 @@ if __name__ == "__main__":
     # Set dates to get historical data for
     date_from = '2020-01-01'
     date_to = '2021-03-05'
-    interval = '5m'
+    interval = '5min'
         
     # Web scrape or API
     if args.website == 'finviz':
@@ -162,9 +165,9 @@ if __name__ == "__main__":
     
     if args.website == 'alphavantage':
         if args.slice != '':
-            intraday_extended_price_data(ticker, window=args.slice, interval, website='alphavantage')
+            intraday_extended_price_data(args.ticker, args.slice, interval, website='alphavantage')
         else:
-            intraday_price_data(ticker, interval, website='alphavantage')
+            intraday_price_data(args.ticker, interval, website='alphavantage')
             
             
         
